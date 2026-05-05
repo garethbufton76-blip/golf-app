@@ -121,7 +121,7 @@ export default function Score({ setScreen }: any) {
                   h.status === "as" && "border-white/20 from-neutral-700 to-black",
                   h.status === "pending" && "border-white/10 from-black/60 to-black/30",
                   h.hole === nextHoleNumber &&
-                    "scale-[1.05] ring-2 ring-[#d1c79f] shadow-[0_0_12px_rgba(209,199,159,0.6)]"
+                   "scale-[1.05] border-[#d1c79f] shadow-[0_0_0_2px_#d1c79f,0_0_16px_rgba(209,199,159,0.75)]"
                 )}
               >
                 <div className="h-5 text-[10px] font-bold">
