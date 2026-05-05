@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const cx = (...v) => v.filter(Boolean).join(" ");
 const gold = "bg-gradient-to-b from-[#efe6bf] via-[#d1c79f] to-[#b7ab7d] text-black font-semibold";
@@ -18,6 +18,33 @@ const BACKGROUND_IMAGES = {
   score: "",
   admin: "",
 };
+
+const STORAGE_KEY = "dual-in-the-dunes-v1";
+
+function loadSavedState() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveState(value) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+  } catch (error) {
+    console.warn("Could not save app state. Storage may be full.", error);
+  }
+}
+
+function clearSavedState() {
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Ignore storage errors.
+  }
+}
 
 const playerOptions = [1, 2, 4, 6, 8, 10, 12];
 const dayOptions = [1, 2, 3, 4];
@@ -202,22 +229,24 @@ function Roster({ team, setScreen, roster, setRoster, players, dayConfigs, days,
   };
   const pairs = Array.from({ length: Math.floor(list.length / 2) }, (_, i) => [list[i * 2], list[i * 2 + 1]]);
   return (<>
-    <div className="flex items-center justify-between pt-2"><div className="text-sm font-semibold tracking-[0.18em] text-white/75">{teamNames[team]}</div><button onClick={() => setScreen("home")} className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs font-semibold">Back</button></div>
+    <div className="flex items-center justify-between pt-2"><div className="text-sm font-semibold tracking-[0.18em] text-white/75">{teamNames[team]}</div><div className="flex gap-2">
+        <button onClick={resetApp} className="rounded-full border border-red-300/20 bg-red-950/40 px-3 py-2 text-xs font-semibold text-red-100/85">Reset</button>
+        <button onClick={() => setScreen("home")} className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs font-semibold">Back</button>
+      </div></div>
     <div className={cx("mt-3 p-3", panel)}><div className="mb-3 text-[10px] tracking-[0.24em] text-white/55">PAIRING PREVIEW</div><div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(3, pairs.length))}, minmax(0, 1fr))` }}>{pairs.slice(0, 3).map(([a, b], i) => <div key={i} className="rounded-[20px] border border-[#d1c79f]/25 bg-black/30 p-3"><div className="mb-2 text-[10px] text-white/50">PAIR {i + 1}</div><div className="truncate text-xs font-semibold">{a.name}</div><div className="truncate text-xs font-semibold">{b.name}</div></div>)}</div></div>
     <div className="mt-2 flex-1 space-y-3 overflow-y-auto pb-3">{list.map((p, i) => <div key={`${p.name}-${i}`} draggable onDragStart={() => setDragged(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => move(i)} className="rounded-[24px] border border-white/15 bg-black/35 p-3 backdrop-blur-xl"><div className="flex items-center gap-3"><Logo team={team === "Red" ? "red" : "blue"} size="h-14 w-14" small src={p.photo || teamLogos[team]} /><div className="min-w-0 flex-1"><div className="mb-1 flex gap-2"><span className="rounded-full border border-[#d1c79f]/25 px-2 py-0.5 text-[9px] text-white/55">DRAG</span><span className="text-[10px] text-white/50">{p.slot}</span>{p.pair && <span className="rounded-full bg-black/40 px-2 text-[10px] text-white/70">{p.pair}</span>}</div><div className="truncate text-[17px] font-medium">{first(p.name)}</div></div><div className="w-[92px] rounded-[18px] border border-[#d1c79f]/25 bg-black/35 px-3 py-3 text-center"><div className="text-[10px] text-white/50">HANDICAP</div><div className="text-[18px]">{p.handicap}</div></div></div></div>)}</div>
     <div className={cx("absolute bottom-[max(16px,env(safe-area-inset-bottom))] left-4 right-4 z-30 p-3", panel)}><DayButtons dayConfigs={dayConfigs} days={days} active={activeDay} setActive={setActiveDay} /></div>
   </>);
 }
 
-function Score({ setScreen, dayConfigs, players, activeDay, roster, states, setStates, scorecards, setScorecards, startMatch, teamLogos, teamNames }) {
+function Score({ setScreen, dayConfigs, players, activeDay, roster, states, setStates, scorecards, setScorecards, teeShots, setTeeShots, startMatch, teamLogos, teamNames }) {
   const day = dayConfigs[activeDay];
   const count = matchCount(players, day.format);
   const [activeMatch, setActiveMatch] = useState(startMatch || 0);
   const [selectedHole, setSelectedHole] = useState(null);
   const [cardPlayer, setCardPlayer] = useState(null);
-  const [caddie, setCaddie] = useState(null);
+  
   const [draft, setDraft] = useState({ red: 4, blue: 4, red_0: 4, red_1: 4, blue_0: 4, blue_1: 4 });
-  const [teeShots, setTeeShots] = useState({});
   const stateKey = keyFor(activeDay, activeMatch);
   const teeKey = (team, hole) => `${stateKey}-${hole}-${team}`;
   const holes = states[stateKey] || blankHoles();
@@ -228,7 +257,13 @@ function Score({ setScreen, dayConfigs, players, activeDay, roster, states, setS
     const name = teamNames[result.leader === "red" ? "Red" : "Blue"];
     return result.main.replace(result.leader.toUpperCase(), name.toUpperCase());
   })();
-  const current = holesByTee[1][day.tee];
+  const nextHoleNumber = holes.find((h) => h.status === "pending")?.hole || 18;
+  const current = holesByTee[nextHoleNumber][day.tee];
+  const isAmbrose = /ambrose/i.test(day.format);
+  const teeShotCount = (team, player) => {
+    if (!player) return 0;
+    return Array.from({ length: 18 }, (_, i) => i + 1).filter((hole) => teeShots[teeKey(team, hole)] === player.name).length;
+  };
 
   const playerKey = (team, p) => `${team}-${p.rosterIndex}-${p.name}`;
   const grossFor = (team, p, hole) => scorecards[playerKey(team, p)]?.[hole] ?? null;
@@ -327,18 +362,23 @@ function Score({ setScreen, dayConfigs, players, activeDay, roster, states, setS
         <div className="mb-1 flex items-center justify-between text-[11px] font-semibold tracking-[0.22em] text-white/60"><div>{day.label.toUpperCase()} • ST MICHAELS • {day.tee.toUpperCase()}</div><button onClick={() => setScreen("home")} className="text-sm font-semibold tracking-normal text-white/85">Back</button></div>
         <div className="mb-2 text-center text-[11px] font-extrabold tracking-[0.32em] text-white/80">{day.format.toUpperCase()}</div>
         <div className="grid grid-cols-[minmax(0,1fr)_44px_minmax(0,1fr)] items-start gap-3">
-          <TeamPlayers team="red" players={match.red} setCardPlayer={setCardPlayer} teamLogos={teamLogos} teamNames={teamNames} />
+          <TeamPlayers team="red" players={match.red} setCardPlayer={setCardPlayer} teamLogos={teamLogos} teamNames={teamNames} showTeeDots={isAmbrose} teeShotCount={(p) => teeShotCount("red", p)} />
           <div className="flex h-[70px] items-center justify-center text-2xl font-bold text-white/75">VS</div>
-          <TeamPlayers team="blue" players={match.blue} setCardPlayer={setCardPlayer} teamLogos={teamLogos} teamNames={teamNames} />
+          <TeamPlayers team="blue" players={match.blue} setCardPlayer={setCardPlayer} teamLogos={teamLogos} teamNames={teamNames} showTeeDots={isAmbrose} teeShotCount={(p) => teeShotCount("blue", p)} />
         </div>
         <div className="mt-1 text-center"><div className="text-[20px] font-extrabold tracking-[0.08em]">{displayMain}</div><div className="mt-0.5 text-[10px] tracking-[0.16em] text-white/55">{result.sub}</div></div>
       </div>
 
       <div className="relative mt-4 rounded-[26px] border border-white/10 bg-black/45 p-4 backdrop-blur-xl">
-        <div className="mb-4 flex items-center justify-between"><div><div className="text-[10px] tracking-[0.22em] text-white/60">HOLE TRACKER</div><div className="text-[14px] font-bold tracking-[0.16em]">Hole {current.hole} • SI {current.si} • {current.metres}m</div></div><button onClick={() => setCaddie(current)} className="rounded-full border border-[#d1c79f]/25 bg-black/40 px-2 py-1 text-xs">Caddie</button></div>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] tracking-[0.22em] text-white/60">HOLE TRACKER</div>
+            <div className="text-[14px] font-bold tracking-[0.16em]">Hole {current.hole} • SI {current.si} • {current.metres}m</div>
+          </div>
+        </div>
         <div className="grid grid-cols-6 gap-2.5">{holes.map((h) => <Hole key={h.hole} h={h} />)}</div>
 
-        {caddie && <Overlay><div className="mb-4 flex justify-between"><div><div className="text-[11px] tracking-[0.28em] text-white/60">CADDIE</div><div className="mt-2 text-[18px] font-bold">Hole {caddie.hole}</div><div className="mt-1 text-[11px] text-white/50">PAR {caddie.par} • {caddie.metres}M • SI {caddie.si}</div></div><Close onClick={() => setCaddie(null)} /></div><div className="rounded-[22px] border border-[#d1c79f]/20 bg-black/50 p-3 text-[13px] leading-6 text-white/90">Position first. Pick the sensible side, avoid the short-sided miss, and attack only when the angle and number are both right.</div></Overlay>}
+        
 
         {cardPlayer && <Overlay tall><div className="mb-4 flex justify-between"><div><div className="text-[11px] tracking-[0.28em] text-[#d1c79f]/70">PLAYER SCORECARD</div><div className="mt-2 text-[18px] font-bold">{cardPlayer.p.name}</div><div className="mt-1 text-[11px] text-[#d1c79f]/65">{day.course} • {day.tee} TEE</div></div><Close onClick={() => setCardPlayer(null)} /></div><div className="grid grid-cols-6 gap-2 overflow-y-auto">{playerCard(cardPlayer.p, cardPlayer.team).map((h) => <div key={h.hole} className="rounded-[14px] border border-white/10 bg-black/45 p-2 text-center"><div className="text-[9px] text-white/45">HOLE</div><div className="text-[15px] font-bold">{h.hole}</div><div className="mt-1 text-[9px] text-white/45">PAR {h.par}</div><div className="mt-2 text-[18px] font-black text-[#d1c79f]">{h.gross == null ? "-" : h.gross}</div><div className="mt-1 text-[9px] text-white/55">{h.pts == null ? "" : `${h.pts} pts`}</div></div>)}</div></Overlay>}
 
@@ -349,7 +389,7 @@ function Score({ setScreen, dayConfigs, players, activeDay, roster, states, setS
   </>);
 }
 
-function TeamPlayers({ team, players, setCardPlayer, teamLogos }) {
+function TeamPlayers({ team, players, setCardPlayer, teamLogos, showTeeDots = false, teeShotCount = () => 0 }) {
   const fallbackLogo = teamLogos?.[team === "red" ? "Red" : "Blue"] || "";
   const logoSize = players.length > 1 ? "h-[50px] w-[50px]" : "h-[64px] w-[64px]";
   const letterSize = players.length > 1 ? "text-[26px]" : "text-[34px]";
@@ -361,7 +401,24 @@ function TeamPlayers({ team, players, setCardPlayer, teamLogos }) {
             <Logo team={team} size={logoSize} src={p.photo || fallbackLogo} letterClass={letterSize} />
           </button>
           <div className="mt-1 w-full truncate text-[11px] leading-tight text-white">{first(p.name)}</div>
+          {showTeeDots && <TeeDots count={teeShotCount(p)} />}
         </div>
+      ))}
+    </div>
+  );
+}
+
+function TeeDots({ count = 0 }) {
+  return (
+    <div className="mt-1 flex justify-center gap-0.5">
+      {Array.from({ length: 6 }, (_, i) => (
+        <span
+          key={i}
+          className={cx(
+            "h-1.5 w-1.5 rounded-full border border-[#d1c79f]/35",
+            i < count ? "bg-[#d1c79f] shadow-[0_0_6px_rgba(209,199,159,0.8)]" : "bg-black/45"
+          )}
+        />
       ))}
     </div>
   );
@@ -417,13 +474,26 @@ function Close({ onClick }) {
   return <button onClick={onClick} className="rounded-full border border-[#d1c79f]/40 bg-[#d1c79f]/15 px-3 py-1.5 text-xs font-semibold text-[#efe6bf]">Close</button>;
 }
 
-function Admin({ setScreen, players, setPlayers, days, setDays, dayConfigs, setDayConfigs, roster, setRoster, dayLocks, setDayLocks, teamLogos, setTeamLogos, teamNames, setTeamNames }) {
+function Admin({ setScreen, players, setPlayers, days, setDays, dayConfigs, setDayConfigs, roster, setRoster, dayLocks, setDayLocks, teamLogos, setTeamLogos, teamNames, setTeamNames, resetApp }) {
   const [adminMode, setAdminMode] = useState("event");
   const [editingTeam, setEditingTeam] = useState("Red");
   const readImageFile = (file, callback) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => callback(String(reader.result || ""));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxSize = 420;
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        callback(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      img.src = String(reader.result || "");
+    };
     reader.readAsDataURL(file);
   };
   const setDay = (i, field, value) => {
@@ -514,8 +584,8 @@ function Admin({ setScreen, players, setPlayers, days, setDays, dayConfigs, setD
           </div>
         </div>
         <div className="mb-3 grid grid-cols-2 gap-2">
-          <Button active={editingTeam === "Red"} onClick={() => setEditingTeam("Red")}>Team Red</Button>
-          <Button active={editingTeam === "Blue"} onClick={() => setEditingTeam("Blue")}>Team Blue</Button>
+          <Button active={editingTeam === "Red"} onClick={() => setEditingTeam("Red")}>{teamNames.Red || "Team Red"}</Button>
+          <Button active={editingTeam === "Blue"} onClick={() => setEditingTeam("Blue")}>{teamNames.Blue || "Team Blue"}</Button>
         </div>
         <div className="mb-3 rounded-[18px] border border-[#d1c79f]/25 bg-black/35 p-3 text-[11px] leading-5 text-white/60">
           Tap a team logo or player image to replace it. Player images override the team logo on roster and match screens.
@@ -561,48 +631,26 @@ function Admin({ setScreen, players, setPlayers, days, setDays, dayConfigs, setD
 }
 
 function AdminPicker({ title, options, value, setValue }) {
-  return <div className="rounded-[18px] border border-[#d1c79f]/25 bg-black/40 p-3"><div className="mb-2 text-[9px] tracking-[0.16em] text-white/50">{title}</div><div className="grid grid-cols-4 gap-1.5">{options.map((o) => <Button key={o} active={o === value} onClick={() => setValue(o)} className="rounded-lg py-2">{o}</Button>)}</div></div>;
-}
-
-function Label({ children }) {
-  return <div className="mb-1.5 text-[9px] tracking-[0.14em] text-white/50">{children}</div>;
-}
-
-export default function App() {
-  const [screen, setScreen] = useState("home");
-  const [players, setPlayers] = useState(1);
-  const [days, setDays] = useState(1);
-  const [dayConfigs, setDayConfigs] = useState(Array.from({ length: 4 }, (_, i) => ({ label: `Day ${i + 1}`, teeTime: i < 2 ? "8:00" : "8:30", course: "St Michaels", tee: "Blue", format: "Singles Match Play" })));
-  const [roster, setRoster] = useState(makeRoster);
-  const [activeDay, setActiveDay] = useState(0);
-  const [selectedMatch, setSelectedMatch] = useState(0);
-  const [states, setStates] = useState({});
-  const [scorecards, setScorecards] = useState({});
-  const [dayLocks, setDayLocks] = useState({});
-  const [teamLogos, setTeamLogos] = useState({ Red: "", Blue: "" });
-  const [teamNames, setTeamNames] = useState({ Red: "Team Red", Blue: "Team Blue" });
-  const totals = useMemo(() => homeTotals(dayConfigs, days, players, states), [dayConfigs, days, players, states]);
-  const bg = screen === "rosterP" ? TEAM.red.bg : screen === "rosterB" ? TEAM.blue.bg : "from-[#092018] via-[#101010] to-black";
-  const bgImage = BACKGROUND_IMAGES[screen] || BACKGROUND_IMAGES.home;
-
-  const openMatch = (i) => { setSelectedMatch(i); setScreen("score"); };
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black text-white">
-      <div className={cx("relative h-[780px] w-[390px] overflow-hidden rounded-3xl bg-gradient-to-b", bg)}>
-        {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />}
-        <div className="absolute inset-0 bg-black/15" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(209,199,159,0.25),transparent_32%)]" />
-
-        <div className="relative z-10 flex h-full flex-col p-4 pt-[max(16px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]">
-          {screen === "home" && <Home setScreen={setScreen} dayConfigs={dayConfigs} days={days} players={players} activeDay={activeDay} setActiveDay={setActiveDay} totals={totals} openMatch={openMatch} teamLogos={teamLogos} teamNames={teamNames} />}
-          {screen === "score" && <Score setScreen={setScreen} dayConfigs={dayConfigs} players={players} activeDay={activeDay} roster={roster} states={states} setStates={setStates} scorecards={scorecards} setScorecards={setScorecards} startMatch={selectedMatch} teamLogos={teamLogos} teamNames={teamNames} />}
-          {screen === "rosterP" && <Roster team="Red" setScreen={setScreen} roster={roster} setRoster={setRoster} players={players} dayConfigs={dayConfigs} days={days} activeDay={activeDay} setActiveDay={setActiveDay} teamLogos={teamLogos} teamNames={teamNames} />}
-          {screen === "rosterB" && <Roster team="Blue" setScreen={setScreen} roster={roster} setRoster={setRoster} players={players} dayConfigs={dayConfigs} days={days} activeDay={activeDay} setActiveDay={setActiveDay} teamLogos={teamLogos} teamNames={teamNames} />}
-          {screen === "admin" && <Admin setScreen={setScreen} players={players} setPlayers={setPlayers} days={days} setDays={setDays} dayConfigs={dayConfigs} setDayConfigs={setDayConfigs} roster={roster} setRoster={setRoster} dayLocks={dayLocks} setDayLocks={setDayLocks} teamLogos={teamLogos} setTeamLogos={setTeamLogos} teamNames={teamNames} setTeamNames={setTeamNames} />}
-          {screen === "home" && <button onClick={() => setScreen("admin")} className="absolute left-4 top-4"><AdminIcon /></button>}
-        </div>
+    <div className="rounded-[18px] border border-[#d1c79f]/25 bg-black/40 p-3">
+      <div className="mb-2 text-[10px] tracking-[0.18em] text-white/50">{title}</div>
+      <div className="grid grid-cols-4 gap-2">
+        {options.map((o) => (
+          <Button key={o} active={o === value} onClick={() => setValue(o)} className="py-3">
+            {o}
+          </Button>
+        ))}
       </div>
     </div>
   );
 }
+
+function Label({ children }) {
+  return <div className="mb-1 text-[9px] tracking-[0.18em] text-white/50">{children}</div>;
+}
+
+export default function App() {
+  const saved = useMemo(() => loadSavedState(), []);
+  const [screen, setScreen] = useState("home");
+  const [players, setPlayers] = useState(saved.players ?? 1);
+  const [days, setDays] = useState(saved.days ?? 1
