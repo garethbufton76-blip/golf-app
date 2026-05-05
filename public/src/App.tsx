@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Home from "./components/Home";
-import Score from "./components/Score";
+import Home from "../components/Home";
+import Score from "../components/Score";
 
 export default function App() {
   const [screen, setScreen] = useState<"home" | "score">("home");
