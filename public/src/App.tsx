@@ -6,7 +6,7 @@ export default function App() {
   const [screen, setScreen] = useState<"home" | "score">("home");
 
   return (
-    <div className="min-h-[100svh] w-full bg-black text-white">
+    <div style={{ minHeight: "100vh", background: "#050505", color: "white" }}>
       {screen === "home" && <Home setScreen={setScreen} />}
       {screen === "score" && <Score setScreen={setScreen} />}
     </div>
