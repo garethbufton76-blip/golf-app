@@ -653,4 +653,163 @@ export default function App() {
   const saved = useMemo(() => loadSavedState(), []);
   const [screen, setScreen] = useState("home");
   const [players, setPlayers] = useState(saved.players ?? 1);
-  const [days, setDays] = useState(saved.days ?? 1
+  const [days, setDays] = useState(saved.days ?? 1);
+  const [dayConfigs, setDayConfigs] = useState(saved.dayConfigs ?? Array.from({ length: 4 }, (_, i) => ({ label: `Day ${i + 1}`, teeTime: i < 2 ? "8:00" : "8:30", course: "St Michaels", tee: "Blue", format: "Singles Match Play" })));
+  const [roster, setRoster] = useState(saved.roster ?? makeRoster());
+  const [activeDay, setActiveDay] = useState(saved.activeDay ?? 0);
+  const [selectedMatch, setSelectedMatch] = useState(saved.selectedMatch ?? 0);
+  const [states, setStates] = useState(saved.states ?? {});
+  const [scorecards, setScorecards] = useState(saved.scorecards ?? {});
+  const [dayLocks, setDayLocks] = useState(saved.dayLocks ?? {});
+  const [teamLogos, setTeamLogos] = useState(saved.teamLogos ?? { Red: "", Blue: "" });
+  const [teamNames, setTeamNames] = useState(saved.teamNames ?? { Red: "Team Red", Blue: "Team Blue" });
+  const [teeShots, setTeeShots] = useState(saved.teeShots ?? {});
+
+  useEffect(() => {
+    saveState({
+      players,
+      days,
+      dayConfigs,
+      roster,
+      activeDay,
+      selectedMatch,
+      states,
+      scorecards,
+      dayLocks,
+      teamLogos,
+      teamNames,
+      teeShots,
+    });
+  }, [players, days, dayConfigs, roster, activeDay, selectedMatch, states, scorecards, dayLocks, teamLogos, teamNames, teeShots]);
+
+  const resetApp = () => {
+    clearSavedState();
+    setPlayers(1);
+    setDays(1);
+    setDayConfigs(Array.from({ length: 4 }, (_, i) => ({ label: `Day ${i + 1}`, teeTime: i < 2 ? "8:00" : "8:30", course: "St Michaels", tee: "Blue", format: "Singles Match Play" })));
+    setRoster(makeRoster());
+    setActiveDay(0);
+    setSelectedMatch(0);
+    setStates({});
+    setScorecards({});
+    setDayLocks({});
+    setTeamLogos({ Red: "", Blue: "" });
+    setTeamNames({ Red: "Team Red", Blue: "Team Blue" });
+    setTeeShots({});
+    setScreen("home");
+  };
+
+  const openMatch = (matchIndex) => {
+    setSelectedMatch(matchIndex);
+    setScreen("score");
+  };
+
+  const totals = useMemo(() => homeTotals(dayConfigs, days, players, states), [dayConfigs, days, players, states]);
+  const bgImage = BACKGROUND_IMAGES[screen] || BACKGROUND_IMAGES.home;
+  const bg = screen === "score" ? TEAM.blue.bg : screen === "rosterP" ? TEAM.red.bg : screen === "rosterB" ? TEAM.blue.bg : "from-black via-[#101010] to-black";
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black text-white">
+      <div className={cx("relative h-[780px] w-[390px] overflow-hidden rounded-3xl bg-gradient-to-b", bg)}>
+        {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />}
+        <div className="absolute inset-0 bg-black/15" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(209,199,159,0.25),transparent_32%)]" />
+
+        <div className="relative z-10 flex h-full flex-col p-4 pt-[max(16px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]">
+          {screen === "home" && (
+            <Home
+              setScreen={setScreen}
+              dayConfigs={dayConfigs}
+              days={days}
+              players={players}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              totals={totals}
+              openMatch={openMatch}
+              teamLogos={teamLogos}
+              teamNames={teamNames}
+            />
+          )}
+
+          {screen === "score" && (
+            <Score
+              setScreen={setScreen}
+              dayConfigs={dayConfigs}
+              players={players}
+              activeDay={activeDay}
+              roster={roster}
+              states={states}
+              setStates={setStates}
+              scorecards={scorecards}
+              setScorecards={setScorecards}
+              teeShots={teeShots}
+              setTeeShots={setTeeShots}
+              startMatch={selectedMatch}
+              teamLogos={teamLogos}
+              teamNames={teamNames}
+            />
+          )}
+
+          {screen === "rosterP" && (
+            <Roster
+              team="Red"
+              setScreen={setScreen}
+              roster={roster}
+              setRoster={setRoster}
+              players={players}
+              dayConfigs={dayConfigs}
+              days={days}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              teamLogos={teamLogos}
+              teamNames={teamNames}
+            />
+          )}
+
+          {screen === "rosterB" && (
+            <Roster
+              team="Blue"
+              setScreen={setScreen}
+              roster={roster}
+              setRoster={setRoster}
+              players={players}
+              dayConfigs={dayConfigs}
+              days={days}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              teamLogos={teamLogos}
+              teamNames={teamNames}
+            />
+          )}
+
+          {screen === "admin" && (
+            <Admin
+              setScreen={setScreen}
+              players={players}
+              setPlayers={setPlayers}
+              days={days}
+              setDays={setDays}
+              dayConfigs={dayConfigs}
+              setDayConfigs={setDayConfigs}
+              roster={roster}
+              setRoster={setRoster}
+              dayLocks={dayLocks}
+              setDayLocks={setDayLocks}
+              teamLogos={teamLogos}
+              setTeamLogos={setTeamLogos}
+              teamNames={teamNames}
+              setTeamNames={setTeamNames}
+              resetApp={resetApp}
+            />
+          )}
+
+          {screen === "home" && (
+            <button onClick={() => setScreen("admin")} className="absolute left-4 top-4">
+              <AdminIcon />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
