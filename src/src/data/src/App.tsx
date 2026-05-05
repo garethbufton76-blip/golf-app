@@ -3,16 +3,17 @@ import Home from "./components/Home";
 import Score from "./components/Score";
 
 export default function App() {
-  const [screen, setScreen] = useState("home");
-  const [players] = useState(2);
+  const [screen, setScreen] = useState<"home" | "score">("home");
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-[100svh] w-full bg-black text-white">
       {screen === "home" && (
-        <Home players={players} setScreen={setScreen} />
+        <Home setScreen={setScreen} />
       )}
 
-      {screen === "score" && <Score />}
+      {screen === "score" && (
+        <Score setScreen={setScreen} />
+      )}
     </div>
   );
 }
