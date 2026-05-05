@@ -1,16 +1,18 @@
+import React, { useState } from "react";
+import Home from "../components/Home";
+import Score from "../components/Score";
+
 export default function App() {
+  const [screen, setScreen] = useState<"home" | "score">("home");
+
   return (
     <div style={{
       minHeight: "100vh",
-      background: "black",
-      color: "#d1c79f",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 36,
-      fontWeight: 900
+      background: "#050505",
+      color: "white"
     }}>
-      GOLD TEST 999
+      {screen === "home" && <Home setScreen={setScreen} />}
+      {screen === "score" && <Score setScreen={setScreen} />}
     </div>
   );
 }
