@@ -229,10 +229,10 @@ function Roster({ team, setScreen, roster, setRoster, players, dayConfigs, days,
   };
   const pairs = Array.from({ length: Math.floor(list.length / 2) }, (_, i) => [list[i * 2], list[i * 2 + 1]]);
   return (<>
-    <div className="flex items-center justify-between pt-2"><div className="text-sm font-semibold tracking-[0.18em] text-white/75">{teamNames[team]}</div><div className="flex gap-2">
-        <button onClick={resetApp} className="rounded-full border border-red-300/20 bg-red-950/40 px-3 py-2 text-xs font-semibold text-red-100/85">Reset</button>
-        <button onClick={() => setScreen("home")} className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs font-semibold">Back</button>
-      </div></div>
+    <div className="flex items-center justify-between pt-2">
+      <div className="text-sm font-semibold tracking-[0.18em] text-white/75">{teamNames[team]}</div>
+      <button onClick={() => setScreen("home")} className="rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs font-semibold">Back</button>
+    </div>
     <div className={cx("mt-3 p-3", panel)}><div className="mb-3 text-[10px] tracking-[0.24em] text-white/55">PAIRING PREVIEW</div><div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(3, pairs.length))}, minmax(0, 1fr))` }}>{pairs.slice(0, 3).map(([a, b], i) => <div key={i} className="rounded-[20px] border border-[#d1c79f]/25 bg-black/30 p-3"><div className="mb-2 text-[10px] text-white/50">PAIR {i + 1}</div><div className="truncate text-xs font-semibold">{a.name}</div><div className="truncate text-xs font-semibold">{b.name}</div></div>)}</div></div>
     <div className="mt-2 flex-1 space-y-3 overflow-y-auto pb-3">{list.map((p, i) => <div key={`${p.name}-${i}`} draggable onDragStart={() => setDragged(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => move(i)} className="rounded-[24px] border border-white/15 bg-black/35 p-3 backdrop-blur-xl"><div className="flex items-center gap-3"><Logo team={team === "Red" ? "red" : "blue"} size="h-14 w-14" small src={p.photo || teamLogos[team]} /><div className="min-w-0 flex-1"><div className="mb-1 flex gap-2"><span className="rounded-full border border-[#d1c79f]/25 px-2 py-0.5 text-[9px] text-white/55">DRAG</span><span className="text-[10px] text-white/50">{p.slot}</span>{p.pair && <span className="rounded-full bg-black/40 px-2 text-[10px] text-white/70">{p.pair}</span>}</div><div className="truncate text-[17px] font-medium">{first(p.name)}</div></div><div className="w-[92px] rounded-[18px] border border-[#d1c79f]/25 bg-black/35 px-3 py-3 text-center"><div className="text-[10px] text-white/50">HANDICAP</div><div className="text-[18px]">{p.handicap}</div></div></div></div>)}</div>
     <div className={cx("absolute bottom-[max(16px,env(safe-area-inset-bottom))] left-4 right-4 z-30 p-3", panel)}><DayButtons dayConfigs={dayConfigs} days={days} active={activeDay} setActive={setActiveDay} /></div>
@@ -709,8 +709,8 @@ export default function App() {
   const bg = screen === "score" ? TEAM.blue.bg : screen === "rosterP" ? TEAM.red.bg : screen === "rosterB" ? TEAM.blue.bg : "from-black via-[#101010] to-black";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black text-white">
-      <div className={cx("relative h-[780px] w-[390px] overflow-hidden rounded-3xl bg-gradient-to-b", bg)}>
+    <div className="min-h-[100svh] w-full bg-black text-white sm:flex sm:items-center sm:justify-center">
+      <div className={cx("relative min-h-[100svh] w-full overflow-hidden bg-gradient-to-b sm:h-[780px] sm:min-h-0 sm:max-w-[430px] sm:rounded-3xl", bg)}>
         {bgImage && <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />}
         <div className="absolute inset-0 bg-black/15" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(209,199,159,0.25),transparent_32%)]" />
