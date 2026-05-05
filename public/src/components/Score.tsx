@@ -235,6 +235,9 @@ function PlayerBadge({ name, team }: any) {
 
 function ScoreBox({ name, score, setScore, team, par }: any) {
   return (
+      <div style={{ color: "#d1c79f", textAlign: "center", marginBottom: 10 }}>
+    SCORE SCREEN LIVE
+  </div>
     <div className="overflow-hidden rounded-[22px] border border-[#d1c79f]/20 bg-black/60">
       <div
         className={cx(
